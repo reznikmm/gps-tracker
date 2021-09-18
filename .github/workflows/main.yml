@@ -11,12 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v2
         with:
-          path: template
+          path: gps-tracker
       - name: REUSE Compliance Check
         uses: fsfe/reuse-action@v1.1
         with:
-          args: --root template lint
-      - name: Build RPM
-        uses: reznikmm/fedora-ada-action@v3
-        with:
-          spec: template/.copr/template.spec
+          args: --root gps-tracker lint
+# Nothing to build yet
+#      - name: Build RPM
+#        uses: reznikmm/fedora-ada-action@v3
+#        with:
+#          spec: gps-tracker/.copr/gps-tracker.spec

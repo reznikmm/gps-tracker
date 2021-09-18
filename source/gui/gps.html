@@ -1,0 +1,154 @@
+<!--
+SPDX-FileCopyrightText: 2021 2021 Max Reznik <reznikmm@gmail.com>
+
+SPDX-License-Identifier: MIT
+-->
+
+<!DOCTYPE html>
+<html>
+  <head>
+   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+   integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+   crossorigin=""/>
+ <!-- Make sure you put this AFTER Leaflet's CSS -->
+ <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+   integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+   crossorigin=""></script>
+  </head>
+  <body style='margin: auto'>
+    <div id="mapid" style="height: 480px;"></div>
+    <h1 id="me">no gps</h1>
+    <h1 id="dog">Text</h1>
+    <p id='toggle_label' hidden='hidden'>Hello, World!</p>
+    <button id='toggle_button' class='pure-button pure-button-active' onclick='aaa()'>Lora</button>
+ <script>
+let device;
+let m1, m2;
+let recv="";
+let last_gps;
+
+function cmd(){
+   var buf = new Int32Array(1);
+   buf[0]=115200;
+   return buf;
+}
+
+function f(a,b){
+//alert(a);
+return b;
+}
+
+function get(device){
+   return device.transferIn(1, 64)
+   .then(result => {
+     const decoder = new TextDecoder();
+     var str=decoder.decode(result.data);
+     var list=str.split('\n');
+     if (list.length == 1) {
+       recv+= str;
+     }else{
+       var dog = document.getElementById("dog");
+       recv+=list[0];
+       let recv_obj = JSON.parse(recv);
+       recv=list[list.length-1];
+       dog.innerHTML = 'lat=' + recv_obj.lat +
+        ' lng=' + recv_obj.lng +
+        ' tm=' + recv_obj.tm +
+        ' sat=' + recv_obj.sat +
+        ' pwr=' + recv_obj.pwr +
+        ' rssi=' + recv_obj.rssi;
+       m2.setLatLng(L.latLng(recv_obj.lat, recv_obj.lng));
+     }
+   })
+   .then(() => get(device));
+}
+
+function gps(pos) {
+  if(pos.timestamp - last_gps < 15000) return;
+  var crd = pos.coords;
+  var me = document.getElementById("me");
+  var dt = new Date(pos.timestamp);
+  me.innerHTML = 'lat=' + crd.latitude +
+  ' lng=' + crd.longitude +
+  ' tm=' + dt.getMinutes() + ':' + dt.getSeconds();
+  m1.setLatLng(L.latLng(crd.latitude, crd.longitude));
+  last_gps=pos.timestamp;
+}
+
+function aaa()
+{
+navigator.usb.requestDevice({ filters: [{ vendorId: 0x10c4 }] })
+.then(selectedDevice => {
+    device = selectedDevice;
+    console.log(device);
+    return device.open(); // Begin a session.
+  })
+.then(() => f("x1",device.selectConfiguration(1))) // Select configuration #1 for the device.
+.then(() => f("b2",device.claimInterface(device.configuration.interfaces[0].interfaceNumber))) // Request exclusive control over interface #.
+.then(() => f("c3",device.controlTransferOut({
+    requestType: 'vendor',  //  SetupData.RequestType.Vendor
+    recipient: 'interface',
+    request: 0x03, //  SetupData.Request=Set line control
+    value: 0x0800,  // SetupData.Value
+    index: 0x00}))) // Interface number
+.then(() => f("c3",device.controlTransferOut({
+    requestType: 'vendor',  //  SetupData.RequestType.Vendor
+    recipient: 'interface',
+    request: 0x1e, //  SetupData.Request=Set line control
+    value: 0x0,  // SetupData.Value
+    index: 0x00},cmd()))) // Interface number
+.then(() => f("c3",device.controlTransferIn({
+    requestType: 'vendor',  //  SetupData.RequestType.Vendor
+    recipient: 'interface',
+    request: 0x04, //  SetupData.Request=Get Line control
+    value: 0x0,  // SetupData.Value
+    index: 0x00}, 2))) // Interface number
+.then(() => f("c3",device.controlTransferOut({
+    requestType: 'vendor',  //  SetupData.RequestType.Vendor
+    recipient: 'interface',
+    request: 0x00, //  SetupData.Request=Enable interface
+    value: 0x01,  // SetupData.Value
+    index: 0x00}))) // Interface number
+.then(() => f("c3",device.controlTransferOut({
+    requestType: 'vendor',  //  SetupData.RequestType.Vendor
+    recipient: 'interface',
+    request: 0x07, //  SetupData.Request=Modem handshake
+    value: 0x0303,  // SetupData.Value
+    index: 0x00}))) // Interface number
+.then(() => get(device))
+.catch(error => { console.error(error); });
+
+       var options = {
+         enableHighAccuracy: true,
+         timeout: 300000,
+         maximumAge: 0
+       };
+       navigator.geolocation.watchPosition(gps,alert,options);
+}
+
+const map = L.map('mapid',
+// { preferCanvas: true,}
+ ).setView([47.78, 35.17], 13);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+m1 = L.circleMarker(L.latLng(47.78, 35.17), {
+    radius: 10,
+    fillColor: '#27ae60',
+    fillOpacity: 1,
+    color: '#fff',
+    weight: 3,
+});
+m1.addTo(map);
+
+m2 = L.circleMarker(L.latLng(47.78, 35.17), {
+    radius: 10,
+    fillColor: '#ae2730',
+    fillOpacity: 1,
+    color: '#fff',
+    weight: 3,
+});
+m2.addTo(map);
+
+    </script>
+  </body>
+</html>

@@ -1,42 +1,46 @@
-Template
-========
+GPS Tracker
+===========
 
-[![Build](https://github.com/reznikmm/template/workflows/Build/badge.svg)](https://github.com/reznikmm/template/actions)
-[![REUSE status](https://api.reuse.software/badge/github.com/reznikmm/template)](https://api.reuse.software/info/github.com/reznikmm/template)
+[![Build](https://github.com/reznikmm/gps-tracker/workflows/Build/badge.svg)](https://github.com/reznikmm/gps-tracker/actions)
+[![REUSE status](https://api.reuse.software/badge/github.com/reznikmm/gps-tracker)](https://api.reuse.software/info/github.com/reznikmm/gps-tracker)
 
-> A template repo for Ada projects
+> A gps-tracker in Ada using LoRa devices
 
-This repository keeps common stuff that probably useful for Ada projects, including:
+I want to track my dog position. So I've bought two Heltec devices:
+* [CubeCell GPS-6502](https://heltec.org/project/htcc-ab02s/)
+* [Wireless Stick (Gecko Board)](https://heltec.org/project/wireless-stick/)
 
-* `README.md` - this README template
-* `gnat/` - gnat project files for a library and an executable
-* `source/` - trivial Ada units
-* `Makefile` - `make` instructions file to build and install projects
-* `.copr/` - a Makefile and RPM spec template to build with [COPR](copr.fedorainfracloud.org)
-* `.reuse/` - a template for license settings to be [REUSE](https://reuse.software) compliant
-* `.github/workflows` - [GitHub Actions](https://docs.github.com/en/actions) script to check [REUSE](https://reuse.software) policies and compile
+I've made a prototype in Arduino, but I want to rewrite it in Ada just for fun.
+
+The project includes 3 parts:
+* transmiter, CubeCell board gets a position from GPS and transmit it over 
+  LoRa module
+* receiver, Wireless Stick board receives data from LoRa module an pass it
+  to a mobile phone
+* GUI, a web application to display the received and the phone position on
+  a map.
+
+The prototype is very simple. It uses USB-OTG wire to connect "Wireless Stick"
+with phone. GUI is written in JavaScript and includes a USB-to-UART "driver"
+for CP2102 chip.
 
 ## Install
 
-Run
-```
-make all install PREFIX=/path/to/install
-```
+TBD
 
 ### Dependencies
-It depends on [Matreshka](https://forge.ada-ru.org/matreshka) library.
+
+TBD
 
 ## Usage
 
-Copy files from the repository to your project and adjust their content.
-To make `REUSE` badge work register the repo [here](https://api.reuse.software/register).
-
-To make `COPR` work create new build with
- * Clone URL: https://github.com/reznikmm/template.git
- * Path to .spec file: .copr/template.spec
- * Build SRPM with: `make_srpm`
-
-To use this template library just add `with "template";` to your project file.
+ * Flash CubeCell with `source/transmiter/gps.ino`
+ * Flash Wireless Stick with `source/receiver/recGPS.ino`
+ * Put `source/gui/gps.html` on a web server and open it in a web browser.
+   Connect the Wireless Stick with USB-OTG cable. Click "LoRa" button and
+   choose the connected device in the list. You should see received GPS
+   position, time (mm:ss), power and phone position. Two cirlce marker
+   should be on the map.
 
 ## Maintainer
 
@@ -45,7 +49,7 @@ To use this template library just add `with "template";` to your project file.
 ## Contribute
 
 Feel free to dive in!
-[Open an issue](https://github.com/reznikmm/template/issues/new)
+[Open an issue](https://github.com/reznikmm/gps-tracker/issues/new)
 or submit PRs.
 
 ## License
