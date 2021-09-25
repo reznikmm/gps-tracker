@@ -1,0 +1,11 @@
+--  SPDX-FileCopyrightText: 2021 Max Reznik <reznikmm@gmail.com>
+--
+--  SPDX-License-Identifier: MIT
+-------------------------------------------------------------
+
+project Receiver is
+   for Target use "xtensa-esp32-elf";
+   for Main use ("main.adb");
+   for Object_Dir use "../source/receiver/main/.objs";
+   for Source_Dirs use ("../source/receiver/main", "../esp32-gnat-rts/esp32/esp32");
+end Receiver;

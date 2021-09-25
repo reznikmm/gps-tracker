@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: MIT
 #
 
+UID ?= $(shell id -u)
+
 all:
-	@echo Nothing here for now
+	docker run --rm -v `pwd`:`pwd` -w `pwd`/source/receiver --user $(UID) reznik/gnat:idf-v4.3.1 idf.py app
 
 install:
 	@echo Nothing here for now
