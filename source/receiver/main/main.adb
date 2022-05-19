@@ -1,14 +1,13 @@
---  SPDX-FileCopyrightText: 2021 Max Reznik <reznikmm@gmail.com>
+--  SPDX-FileCopyrightText: 2021-2022 Max Reznik <reznikmm@gmail.com>
 --
 --  SPDX-License-Identifier: MIT
--------------------------------------------------------------
+---------------------------------------------------------------------
 
 with Ada.Real_Time;
 with Ada.Streams;
+with Ada.Unchecked_Conversion;
 with Interfaces;
 with System;
-pragma Warnings (Off, "is an internal GNAT unit");
-with System.Img_Real;
 
 with ESP32.GPIO;
 with ESP32.DPort;
@@ -16,6 +15,7 @@ with ESP32.SPI;
 
 with Lora;
 with Ints;
+with Locations;
 
 procedure Main
   with No_Return
@@ -36,10 +36,11 @@ is
    procedure Read
      (Address : Interfaces.Unsigned_8;
       Value   : out Interfaces.Unsigned_8);
-
+   --  Read a byte from LoRa module
    procedure Write
      (Address : Interfaces.Unsigned_8;
       Value   : Interfaces.Unsigned_8);
+   --  Write a byte to LoRa module
 
    ----------
    -- Read --
@@ -151,33 +152,31 @@ begin
 
    loop
       declare
+         use type Ada.Streams.Stream_Element;
          use type Ada.Streams.Stream_Element_Count;
          use type Interfaces.Unsigned_16;
+         use type Interfaces.Integer_32;
 
-         Image  : String (1 .. 90);
-         Index  : Positive := Image'First;  --  Next free char in Image
-         Stop   : Positive;  --  Last used char in Image
+         Image  : Ada.Streams.Stream_Element_Array (1 .. 2 + 2 * 4 + 7);
+         Index  : Ada.Streams.Stream_Element_Count;
+         --  Next free byte in Image
 
-         procedure Append (Text : String);
-         --  Append Text to Image skipping leading space characters
+         subtype Word is Ada.Streams.Stream_Element_Array (1 .. 4);
+
+         function Cast is new Ada.Unchecked_Conversion
+           (Interfaces.Integer_32, Word);
+
+         procedure Append (Data : Ada.Streams.Stream_Element_Array);
+         --  Append Data to Image
 
          ------------
          -- Append --
          ------------
 
-         procedure Append (Text : String) is
+         procedure Append (Data : Ada.Streams.Stream_Element_Array) is
          begin
-            for J in Text'Range loop
-               if Text (J) /= ' ' then
-                  Image (Index .. Index + Text'Last - J) :=
-                    Text (J .. Text'Last);
-
-                  Index := Index + Text'Last - J + 1;
-                  return;
-               end if;
-            end loop;
-
-            raise Constraint_Error;
+            Image (Index .. Index + Data'Length - 1) := Data;
+            Index := Index + Data'Length;
          end Append;
 
          type Packet is record
@@ -194,6 +193,13 @@ begin
          Last   : Ada.Streams.Stream_Element_Count;
          Buffer : Ada.Streams.Stream_Element_Array (1 .. 12)
            with Import, Address => Data'Address;
+
+         Present : constant :=
+           Locations.Location_Present + Locations.UTC_Time_Present;
+         Year_1  : constant := 2022 rem 256;
+         Year_2  : constant := 2022 / 256;
+         Month   : constant := 6;
+         Day     : constant := 1;
       begin
          Ints.Signal.Wait (RX_Done, RX_Timeout);
 
@@ -201,51 +207,22 @@ begin
             Lora_SPI.On_DIO_0_Raise (Buffer, Last);
 
             if Last = Buffer'Last then
-               Append ("{""lat"":");
-               Stop := Index - 1;
-               System.Img_Real.Set_Image_Real
-                 (Long_Long_Float (Data.Lat) / 2.0E9 * 360.0,
-                  Image,
-                  Stop,
-                  Fore => 4,
-                  Aft  => 7,
-                  Exp  => 0);
-               Append (Image (Index .. Stop));
+               Index := 1;
+               Append ((Present, 0));
+               Append (Cast (Data.Lat / 5 * 9));
+               Append (Cast (Data.Lng / 5 * 9));
+               Append ((Year_1, Year_2, Month, Day));  --  year, month, day
+               Append
+                ((0,  --  hh
+                  Ada.Streams.Stream_Element (Data.Tm_Sat / 16 / 60),  --  mi
+                  Ada.Streams.Stream_Element (Data.Tm_Sat / 16 mod 60)));  -- s
 
-               Append (",""lng"":");
-               Stop := Index - 1;
-               System.Img_Real.Set_Image_Real
-                 (Long_Long_Float (Data.Lng) / 2.0E9 * 360.0,
-                  Image,
-                  Stop,
-                  Fore => 4,
-                  Aft  => 7,
-                  Exp  => 0);
-               Append (Image (Index .. Stop));
+               Locations.Peripheral_Device.Write
+                (Locations.Location_and_Speed, Image);
 
-               Append (",""tm"":""");
-               Append (Interfaces.Unsigned_16'Image (Data.Tm_Sat / 16 / 60));
-               Append (":");
-               Append (Interfaces.Unsigned_16'Image (Data.Tm_Sat / 16 mod 60));
-               Append (""",""sat"":");
-               Append (Interfaces.Unsigned_16'Image (Data.Tm_Sat mod 16));
-
-               Append (",""pwr"":");
-               Stop := Index - 1;
-               System.Img_Real.Set_Image_Real
-                 (Long_Long_Float (Data.Power) / 128.0 + 3.0,
-                  Image,
-                  Stop,
-                  Fore => 2,
-                  Aft  => 2,
-                  Exp  => 0);
-               Append (Image (Index .. Stop));
-
-               Append (",""rssi"":");
-               Append ("0");  --  FIXME: Add RSSI reading
-               Append ("}" & Character'Val (0));
-               puts (Image (1 .. Index));
-
+               Locations.Peripheral_Device.Write
+                (Locations.Battery_Level,
+                 (1 => Ada.Streams.Stream_Element (Data.Power)));
             end if;
          end if;
       end;

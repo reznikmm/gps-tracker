@@ -20,9 +20,9 @@ The project includes 3 parts:
 * GUI, a web application to display the received and the phone position on
   a map.
 
-The prototype is very simple. It uses USB-OTG wire to connect "Wireless Stick"
-with phone. GUI is written in JavaScript and includes a USB-to-UART "driver"
-for CP2102 chip.
+The prototype is very simple. It uses Bluetooth LE to connect Wireless Stick
+with phone. GUI is written in JavaScript and uses a Web Bluetooth API
+to read coordinates, time and power from Wireless Stick.
 
 ## Install
 
@@ -35,10 +35,10 @@ TBD
 ## Usage
 
  * Flash CubeCell with `source/transmiter/gps.ino`
- * Flash Wireless Stick with `source/receiver/recGPS.ino`
+ * Compile and flash Wireless Stick with `source/receiver/`
  * Put `source/gui/gps.html` on a web server and open it in a web browser.
-   Connect the Wireless Stick with USB-OTG cable. Click "LoRa" button and
-   choose the connected device in the list. You should see received GPS
+   To connect the Wireless Stick click "LoRa" button and
+   choose the "MyTest" device in the list. You should see received GPS
    position, time (mm:ss), power and phone position. Two cirlce marker
    should be on the map.
 
